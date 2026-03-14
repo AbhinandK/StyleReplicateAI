@@ -11,13 +11,30 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
-        .glass-panel {
-            background: rgba(255, 255, 255, 0.7);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
+        .glass-card {
+            background: rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(16px) saturate(180%);
+            -webkit-backdrop-filter: blur(16px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+        }
+        .glass-nav {
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(255, 255, 255, 0.4);
+        }
+        .neon-glow {
+            box-shadow: 0 0 15px rgba(45, 102, 246, 0.5);
+            border: 1.5px solid rgba(45, 102, 246, 0.8) !important;
+        }
+        .go-button-gradient {
+            background: linear-gradient(135deg, #6366f1 0%, #2d66f6 100%);
+            box-shadow: 0 10px 25px -5px rgba(45, 102, 246, 0.4);
         }
         .gradient-bg {
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            background: radial-gradient(circle at top left, #f8fafc, #f1f5f9);
+            background-attachment: fixed;
         }
         .custom-scrollbar::-webkit-scrollbar {
             width: 4px;
@@ -26,7 +43,7 @@
             background: transparent;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
+            background: rgba(0, 0, 0, 0.1);
             border-radius: 10px;
         }
     </style>

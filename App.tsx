@@ -565,7 +565,7 @@ const App: React.FC = () => {
 
   return (
     <div 
-      className="flex flex-col h-screen bg-[#F4F7F8] overflow-hidden text-[#1A1C1E]"
+      className="flex flex-col h-screen gradient-bg overflow-hidden text-[#1A1C1E]"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
@@ -594,8 +594,8 @@ const App: React.FC = () => {
 
       <header className="px-6 pt-4 pb-0 flex items-center justify-center bg-transparent z-10 relative">
         {view !== 'home' && (
-          <button onClick={() => setView('home')} className="absolute left-6 w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm active:scale-95 transition-transform">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M15 18l-6-6 6-6"/></svg>
+          <button onClick={() => setView('home')} className="absolute left-6 w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm active:scale-95 transition-transform">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M15 18l-6-6 6-6"/></svg>
           </button>
         )}
         <div className="flex flex-col items-center">
@@ -608,16 +608,16 @@ const App: React.FC = () => {
       <main className="flex-1 overflow-y-auto px-6 pb-32 custom-scrollbar">
         {view === 'results' && (
           <div className="space-y-2 animate-in fade-in duration-500">
-            <div className="flex bg-slate-100 p-1 rounded-2xl mb-2">
+            <div className="flex bg-slate-200/50 backdrop-blur-md p-1 rounded-2xl mb-2">
               <button 
                 onClick={() => setResultsTab('latest')}
-                className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${resultsTab === 'latest' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}`}
+                className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${resultsTab === 'latest' ? 'bg-white/90 text-blue-600 shadow-sm neon-glow' : 'text-slate-500'}`}
               >
                 Latest Generation
               </button>
               <button 
                 onClick={() => setResultsTab('history')}
-                className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${resultsTab === 'history' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}`}
+                className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${resultsTab === 'history' ? 'bg-white/90 text-blue-600 shadow-sm neon-glow' : 'text-slate-500'}`}
               >
                 History Vault
               </button>
@@ -635,8 +635,8 @@ const App: React.FC = () => {
                 >
                   {resultsTab === 'latest' && (
                     <div className="space-y-2">
-                      <div className="bg-white rounded-[2rem] p-2 shadow-xl shadow-slate-200/50 border border-white relative">
-                        <div className="aspect-[3/4] rounded-[1.5rem] overflow-hidden bg-slate-100 relative group">
+                      <div className="glass-card rounded-[2rem] p-2 relative">
+                        <div className="aspect-[3/4] rounded-[1.5rem] overflow-hidden bg-slate-100/50 relative group">
                           {(isGenerating || isEditing) ? (
                             <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50/80 backdrop-blur-sm z-20">
                               <div className="relative mb-6">
@@ -709,7 +709,7 @@ const App: React.FC = () => {
                       {history.length > 0 ? (
                         <div className="grid grid-cols-3 gap-3">
                           {history.map((item) => (
-                            <div key={item.id} className="aspect-square rounded-2xl overflow-hidden bg-white shadow-sm border-2 border-white relative group">
+                            <div key={item.id} className="aspect-square rounded-2xl overflow-hidden glass-card relative group neon-glow">
                               <img src={item.url} className="w-full h-full object-cover" />
                               <button onClick={(e) => { e.stopPropagation(); deleteFromVault(item.id); }} className="absolute top-1 right-1 bg-red-500/90 text-white p-1.5 rounded-full shadow-lg active:scale-90 z-10"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
                             </div>
@@ -733,16 +733,16 @@ const App: React.FC = () => {
           <div className="space-y-2">
             {(currentStep === 1 || currentStep === 2) && (
               <>
-                <div className="flex bg-slate-100 p-1 rounded-2xl mb-0">
+                <div className="flex bg-slate-200/50 backdrop-blur-md p-1 rounded-2xl mb-0">
                   <button 
                     onClick={() => goToStep(1)}
-                    className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${currentStep === 1 ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}`}
+                    className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${currentStep === 1 ? 'bg-white/90 text-blue-600 shadow-sm neon-glow' : 'text-slate-500'}`}
                   >
                     1. References
                   </button>
                   <button 
                     onClick={() => goToStep(2)}
-                    className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${currentStep === 2 ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}`}
+                    className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${currentStep === 2 ? 'bg-white/90 text-blue-600 shadow-sm neon-glow' : 'text-slate-500'}`}
                   >
                     2. Inspiration
                   </button>
@@ -760,7 +760,7 @@ const App: React.FC = () => {
                       className="w-full"
                     >
                       {currentStep === 1 && (
-                        <div className="bg-white p-4 rounded-[2rem] shadow-sm border border-white">
+                        <div className="glass-card p-4 rounded-[2rem]">
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-2">
                               <span className="bg-slate-100 text-slate-500 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest">
@@ -777,7 +777,7 @@ const App: React.FC = () => {
                           <div className="grid grid-cols-3 gap-3 pb-4 min-h-[380px]">
                             {/* Images 1-5 */}
                             {myReferences.map((r, i) => (
-                              <div key={i} className="aspect-square rounded-2xl overflow-hidden bg-slate-100 relative border border-slate-200">
+                              <div key={i} className="aspect-square rounded-2xl overflow-hidden bg-slate-100/50 relative border border-white/20 neon-glow">
                                 <img src={r} className="w-full h-full object-cover" />
                                 <button onClick={() => setMyReferences(prev => prev.filter((_, idx) => idx !== i))} className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full shadow-lg active:scale-90 transition-transform"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
                               </div>
@@ -802,7 +802,7 @@ const App: React.FC = () => {
                       )}
 
                       {currentStep === 2 && (
-                        <div className="bg-white p-4 rounded-[2rem] shadow-sm border border-white">
+                        <div className="glass-card p-4 rounded-[2rem]">
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-2">
                               {extractedJson && !isExtracting && !isProcessingInspiration && (
@@ -852,9 +852,9 @@ const App: React.FC = () => {
         )}
 
         {view === 'styles' && (
-          <div className="space-y-4 animate-in slide-in-from-right-4 duration-500">
-            <div className="flex items-center gap-2">
-              <span className="bg-white text-blue-600 shadow-sm px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest">
+          <div className="space-y-2 pt-2 animate-in slide-in-from-right-4 duration-500">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="glass-card px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-blue-600 neon-glow">
                 Inspiration Library
               </span>
               <span className="bg-slate-200 text-slate-600 px-2 py-0.5 rounded-md text-[10px] font-bold">
@@ -867,7 +867,7 @@ const App: React.FC = () => {
                   <div 
                     key={i} 
                     onClick={() => applyLibraryStyle(style)}
-                    className="aspect-square rounded-2xl bg-white shadow-sm border-2 border-white overflow-hidden relative cursor-pointer active:scale-[0.98] transition-all group"
+                    className="aspect-square rounded-2xl glass-card overflow-hidden relative cursor-pointer active:scale-[0.98] transition-all group neon-glow"
                   >
                     <img src={style} className="w-full h-full object-cover" />
                     <button 
@@ -890,14 +890,14 @@ const App: React.FC = () => {
         )}
 
         {view === 'profile' && (
-          <div className="space-y-4 animate-in slide-in-from-left-4 duration-500">
-            <div className="flex items-center gap-2">
-              <span className="bg-white text-blue-600 shadow-sm px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest">
+          <div className="space-y-2 pt-2 animate-in slide-in-from-left-4 duration-500">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="glass-card px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-blue-600 neon-glow">
                 User Preferences
               </span>
             </div>
-            <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-white flex items-center gap-4">
-              <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-slate-400"><Icons.User /></div>
+            <div className="glass-card p-6 rounded-[2rem] flex items-center gap-4">
+              <div className="w-16 h-16 rounded-full bg-slate-100/50 flex items-center justify-center text-slate-400"><Icons.User /></div>
               <div><p className="font-bold">Creative User</p><p className="text-xs text-slate-400">Free Tier Plan</p></div>
             </div>
             <div className="p-4 bg-yellow-50 rounded-2xl border border-yellow-100 text-yellow-800 text-xs font-medium">
@@ -926,28 +926,28 @@ const App: React.FC = () => {
         </div>
       )}
 
-      <nav className="fixed bottom-0 left-0 right-0 h-24 bg-white/80 backdrop-blur-xl border-t border-slate-100 px-8 flex items-center justify-between pb-6 z-40">
+      <nav className="fixed bottom-0 left-0 right-0 h-24 glass-nav px-8 flex items-center justify-between pb-6 z-40">
         <button onClick={() => setView('home')} className={`flex flex-col items-center gap-1 ${view === 'home' ? 'text-blue-600' : 'text-slate-400'}`}>
-          <div className="p-1"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
+          <div className={`p-1 ${view === 'home' ? 'neon-glow rounded-full bg-white/50' : ''}`}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
           <span className="text-[10px] font-bold uppercase tracking-tighter">Home</span>
         </button>
         <button onClick={() => setView('results')} className={`flex flex-col items-center gap-1 ${view === 'results' ? 'text-blue-600' : 'text-slate-400'}`}>
-          <div className="p-1"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></div>
+          <div className={`p-1 ${view === 'results' ? 'neon-glow rounded-full bg-white/50' : ''}`}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></div>
           <span className="text-[10px] font-bold uppercase tracking-tighter">Results</span>
         </button>
         <div className="relative -top-10">
-          <button onClick={handleGenerate} disabled={isGenerating || isEditing || isExtracting || !isReadyToSync} className={`w-16 h-16 rounded-full flex flex-col items-center justify-center shadow-xl transition-all border-4 border-white active:scale-95 ${isReadyToSync ? 'bg-[#2D66F6] text-white shadow-blue-200' : 'bg-slate-200 text-slate-400 shadow-none'}`}>
+          <button onClick={handleGenerate} disabled={isGenerating || isEditing || isExtracting || !isReadyToSync} className={`w-16 h-16 rounded-full flex flex-col items-center justify-center transition-all border-4 border-white/50 active:scale-95 ${isReadyToSync ? 'go-button-gradient text-white' : 'bg-slate-200 text-slate-400 shadow-none'}`}>
             {isGenerating || isEditing || isExtracting ? (
               <div className="relative"><div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin"></div><span className="absolute inset-0 flex items-center justify-center text-[8px] font-black text-white">{timer}s</span></div>
             ) : <span className="text-sm font-black italic tracking-tighter">GO</span>}
           </button>
         </div>
         <button onClick={() => setView('styles')} className={`flex flex-col items-center gap-1 ${view === 'styles' ? 'text-blue-600' : 'text-slate-400'}`}>
-          <div className="p-1"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div>
+          <div className={`p-1 ${view === 'styles' ? 'neon-glow rounded-full bg-white/50' : ''}`}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div>
           <span className="text-[10px] font-bold uppercase tracking-tighter">Library</span>
         </button>
         <button onClick={() => setView('profile')} className={`flex flex-col items-center gap-1 ${view === 'profile' ? 'text-blue-600' : 'text-slate-400'}`}>
-          <div className="p-1"><Icons.User /></div>
+          <div className={`p-1 ${view === 'profile' ? 'neon-glow rounded-full bg-white/50' : ''}`}><Icons.User /></div>
           <span className="text-[10px] font-bold uppercase tracking-tighter">Profile</span>
         </button>
       </nav>
