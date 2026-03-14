@@ -619,7 +619,7 @@ const App: React.FC = () => {
                 onClick={() => setResultsTab('history')}
                 className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${resultsTab === 'history' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}`}
               >
-                Vault History
+                History Vault
               </button>
             </div>
 
@@ -748,7 +748,7 @@ const App: React.FC = () => {
                   </button>
                 </div>
 
-                <div className="relative overflow-hidden min-h-[320px]">
+                <div className="relative overflow-hidden min-h-[380px]">
                   <AnimatePresence initial={false} custom={direction} mode="wait">
                     <motion.div
                       key={currentStep}
@@ -774,20 +774,29 @@ const App: React.FC = () => {
                             </div>
                             {myReferences.length > 0 && <button onClick={() => setMyReferences([])} className="text-red-400 font-bold text-[10px] uppercase tracking-tighter">Remove All</button>}
                           </div>
-                          <div className="grid grid-cols-3 gap-3 pb-4">
-                            <label className="aspect-square rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-300 cursor-pointer hover:bg-slate-50 transition-colors">
-                              <Icons.Upload /><span className="text-[10px] font-bold mt-1">Gallery</span>
-                              <input key={myReferences.length} type="file" hidden multiple onChange={handleReferenceUpload} />
-                            </label>
-                            <button onClick={() => setShowCamera(true)} className="aspect-square rounded-2xl border-2 border-dashed border-blue-200 flex flex-col items-center justify-center text-blue-400 bg-blue-50/30 hover:bg-blue-50 transition-colors">
-                              <Icons.Camera /><span className="text-[10px] font-bold mt-1">Camera</span>
-                            </button>
+                          <div className="grid grid-cols-3 gap-3 pb-4 min-h-[380px]">
+                            {/* Images 1-5 */}
                             {myReferences.map((r, i) => (
                               <div key={i} className="aspect-square rounded-2xl overflow-hidden bg-slate-100 relative border border-slate-200">
                                 <img src={r} className="w-full h-full object-cover" />
                                 <button onClick={() => setMyReferences(prev => prev.filter((_, idx) => idx !== i))} className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full shadow-lg active:scale-90 transition-transform"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
                               </div>
                             ))}
+                            
+                            {/* Fill empty slots to push buttons to bottom right of a 4-row grid (12 slots total) */}
+                            {/* 12 slots - 2 buttons = 10 slots for images + spacers */}
+                            {Array.from({ length: 10 - myReferences.length }).map((_, i) => (
+                              <div key={`empty-${i}`} className="aspect-square" />
+                            ))}
+
+                            {/* Camera and Gallery at the bottom right */}
+                            <button onClick={() => setShowCamera(true)} className="aspect-square rounded-2xl border-2 border-dashed border-blue-200 flex flex-col items-center justify-center text-blue-400 bg-blue-50/30 hover:bg-blue-50 transition-colors">
+                              <Icons.Camera /><span className="text-[10px] font-bold mt-1">Camera</span>
+                            </button>
+                            <label className="aspect-square rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-300 cursor-pointer hover:bg-slate-50 transition-colors">
+                              <Icons.Upload /><span className="text-[10px] font-bold mt-1">Gallery</span>
+                              <input key={myReferences.length} type="file" hidden multiple onChange={handleReferenceUpload} />
+                            </label>
                           </div>
                         </div>
                       )}
@@ -812,7 +821,7 @@ const App: React.FC = () => {
                               {inspiration && <button onClick={() => { setInspiration(null); setExtractedJson(''); setGenError(null); }} className="text-red-400 font-bold text-[10px] uppercase tracking-tighter">Clear</button>}
                             </div>
                           </div>
-                          <label className={`block w-full min-h-[200px] rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 relative overflow-hidden group cursor-pointer transition-all ${inspiration ? 'border-solid border-blue-100' : 'hover:border-blue-400'}`}>
+                          <label className={`block w-full min-h-[350px] rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 relative overflow-hidden group cursor-pointer transition-all ${inspiration ? 'border-solid border-blue-100' : 'hover:border-blue-400'}`}>
                             {inspiration ? <img src={inspiration} className="w-full max-h-[400px] object-contain mx-auto" /> : (
                               <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400">
                                 <Icons.Upload /><span className="text-xs mt-2 font-bold uppercase tracking-tighter">Upload Pinterest/IG Style</span>
@@ -846,7 +855,7 @@ const App: React.FC = () => {
           <div className="space-y-4 animate-in slide-in-from-right-4 duration-500">
             <div className="flex items-center gap-2">
               <span className="bg-white text-blue-600 shadow-sm px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest">
-                Saved Inspiration
+                Inspiration Library
               </span>
               <span className="bg-slate-200 text-slate-600 px-2 py-0.5 rounded-md text-[10px] font-bold">
                 {stylesLibrary.length}/{MAX_LIBRARY}
@@ -935,7 +944,7 @@ const App: React.FC = () => {
         </div>
         <button onClick={() => setView('styles')} className={`flex flex-col items-center gap-1 ${view === 'styles' ? 'text-blue-600' : 'text-slate-400'}`}>
           <div className="p-1"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div>
-          <span className="text-[10px] font-bold uppercase tracking-tighter">Styles</span>
+          <span className="text-[10px] font-bold uppercase tracking-tighter">Library</span>
         </button>
         <button onClick={() => setView('profile')} className={`flex flex-col items-center gap-1 ${view === 'profile' ? 'text-blue-600' : 'text-slate-400'}`}>
           <div className="p-1"><Icons.User /></div>
