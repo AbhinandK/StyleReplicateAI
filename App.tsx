@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { GeneratedImage } from './types';
 import { extractStyleJson, generateSwappedImage, editGeneratedImage } from './services/gemini';
 import { Icons } from './constants';
@@ -46,6 +47,7 @@ const resizeImage = (base64Str: string, maxWidth = 1024, maxHeight = 1024): Prom
 
 const App: React.FC = () => {
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
+  const [direction, setDirection] = useState(0);
   const [isPromptGenerationTimeout, setIsPromptGenerationTimeout] = useState(false);
   const [view, setView] = useState<'home' | 'results' | 'styles' | 'profile'>('home');
   const [inspiration, setInspiration] = useState<string | null>(null);
@@ -80,6 +82,70 @@ const App: React.FC = () => {
   const STEP_KEY = 'style_rep_step_v1';
 
   const [isLoaded, setIsLoaded] = useState(false);
+  const [resultsTab, setResultsTab] = useState<'latest' | 'history'>('latest');
+
+  // Swipe Navigation Logic
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
+
+  const navigationSequence = [
+    { view: 'home', step: 1, tab: 'latest' },
+    { view: 'home', step: 2, tab: 'latest' },
+    { view: 'results', step: 2, tab: 'latest' },
+    { view: 'results', step: 2, tab: 'history' },
+    { view: 'styles', step: 2, tab: 'latest' },
+    { view: 'profile', step: 2, tab: 'latest' },
+  ] as const;
+
+  const getCurrentIndex = () => {
+    if (view === 'home') return currentStep === 1 ? 0 : 1;
+    if (view === 'results') return resultsTab === 'latest' ? 2 : 3;
+    if (view === 'styles') return 4;
+    if (view === 'profile') return 5;
+    return 0;
+  };
+
+  const navigateToIndex = (index: number) => {
+    if (index < 0 || index >= navigationSequence.length) return;
+    const target = navigationSequence[index];
+    const currentIndex = getCurrentIndex();
+    
+    // Set animation direction
+    setDirection(index > currentIndex ? 1 : -1);
+    
+    if (target.view === 'home') {
+      setCurrentStep(target.step as 1 | 2);
+    }
+    if (target.view === 'results') {
+      setResultsTab(target.tab as 'latest' | 'history');
+    }
+    setView(target.view);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null || touchStartY.current === null) return;
+    
+    const deltaX = e.changedTouches[0].clientX - touchStartX.current;
+    const deltaY = e.changedTouches[0].clientY - touchStartY.current;
+    
+    // Detect horizontal swipe: dominant X movement and at least 50px
+    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 60) {
+      const currentIndex = getCurrentIndex();
+      if (deltaX < 0) { // Swipe Left -> Next
+        navigateToIndex(currentIndex + 1);
+      } else { // Swipe Right -> Prev
+        navigateToIndex(currentIndex - 1);
+      }
+    }
+    
+    touchStartX.current = null;
+    touchStartY.current = null;
+  };
 
   useEffect(() => {
     console.log("[App] Component mounted");
@@ -278,6 +344,7 @@ const App: React.FC = () => {
           setInspiration(optimized);
           setExtractedJson(''); 
           setGenError(null);
+          runStyleAnalysis(optimized);
           
           setStylesLibrary(prev => {
             const updated = [optimized, ...prev.filter(p => p !== optimized)].slice(0, MAX_LIBRARY);
@@ -305,6 +372,7 @@ const App: React.FC = () => {
     setInspiration(styleImg);
     setExtractedJson('');
     setGenError(null);
+    runStyleAnalysis(styleImg);
     setView('home');
   };
 
@@ -366,9 +434,15 @@ const App: React.FC = () => {
     }
   };
 
+  const goToStep = (step: 1 | 2 | 3) => {
+    if (step === currentStep) return;
+    setDirection(step > currentStep ? 1 : -1);
+    setCurrentStep(step);
+  };
+
   const handleGenerate = async () => {
     if (!isReadyToSync || isGenerating || isEditing) return;
-    setView('results'); 
+    setView('results');
     setIsGenerating(true);
     setGenError(null);
     try {
@@ -482,7 +556,7 @@ const App: React.FC = () => {
     setInspiration(null);
     setExtractedJson('');
     setGenError(null);
-    setCurrentStep(1);
+    goToStep(1);
     storage.setItem(STEP_KEY, 1);
     setView('home');
     setStatusMsg('Data cleared successfully');
@@ -490,7 +564,11 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-[#F4F7F8] overflow-hidden text-[#1A1C1E]">
+    <div 
+      className="flex flex-col h-screen bg-[#F4F7F8] overflow-hidden text-[#1A1C1E]"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
       {!isLoaded && (
         <div className="fixed inset-0 z-[100] bg-white flex flex-col items-center justify-center">
           <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
@@ -514,294 +592,266 @@ const App: React.FC = () => {
         </div>
       )}
 
-      <header className="px-6 pt-12 pb-4 flex items-center justify-center bg-transparent z-10 relative">
+      <header className="px-6 pt-4 pb-0 flex items-center justify-center bg-transparent z-10 relative">
         {view !== 'home' && (
           <button onClick={() => setView('home')} className="absolute left-6 w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm active:scale-95 transition-transform">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M15 18l-6-6 6-6"/></svg>
           </button>
         )}
         <div className="flex flex-col items-center">
-          <h1 className={`${view === 'home' ? 'text-3xl' : 'text-xl'} font-bold tracking-tight text-center`}>
+          <h1 className="text-xl font-bold tracking-tight text-center">
             Style Replicate AI
           </h1>
-          {view === 'home' && (
-            <div className="flex items-center gap-1.5 mt-2">
-              <div className={`h-1 rounded-full transition-all duration-500 ${currentStep === 1 ? 'w-8 bg-blue-600' : 'w-4 bg-slate-200'}`} />
-              <div className={`h-1 rounded-full transition-all duration-500 ${currentStep === 2 ? 'w-8 bg-blue-600' : 'w-4 bg-slate-200'}`} />
-              <div className={`h-1 rounded-full transition-all duration-500 ${currentStep === 3 ? 'w-8 bg-blue-600' : 'w-4 bg-slate-200'}`} />
-            </div>
-          )}
         </div>
       </header>
 
       <main className="flex-1 overflow-y-auto px-6 pb-32 custom-scrollbar">
         {view === 'results' && (
-          <div className="space-y-8 animate-in fade-in duration-500">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400">Generation Vault</h2>
-              <span className={`px-3 py-1 text-[10px] font-bold rounded-full uppercase tracking-tighter ${(isGenerating || isEditing) ? 'bg-blue-100 text-blue-600' : 'bg-green-100 text-green-600'}`}>
-                {(isGenerating || isEditing) ? 'Syncing...' : 'Ready'}
-              </span>
+          <div className="space-y-2 animate-in fade-in duration-500">
+            <div className="flex bg-slate-100 p-1 rounded-2xl mb-2">
+              <button 
+                onClick={() => setResultsTab('latest')}
+                className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${resultsTab === 'latest' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}`}
+              >
+                Latest Generation
+              </button>
+              <button 
+                onClick={() => setResultsTab('history')}
+                className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${resultsTab === 'history' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}`}
+              >
+                Vault History
+              </button>
             </div>
 
-            <div className="bg-white rounded-[2.5rem] p-4 shadow-xl shadow-slate-200/50 border border-white relative">
-              <div className="aspect-[3/4] rounded-[2rem] overflow-hidden bg-slate-100 relative group">
-                {(isGenerating || isEditing) ? (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50/80 backdrop-blur-sm z-20">
-                    <div className="relative mb-6">
-                      <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-[10px] font-black text-blue-600">{timer}s</span>
+            <div className="relative overflow-hidden min-h-[400px]">
+              <AnimatePresence initial={false} mode="wait">
+                <motion.div
+                  key={resultsTab}
+                  initial={{ opacity: 0, x: resultsTab === 'latest' ? -20 : 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: resultsTab === 'latest' ? 20 : -20 }}
+                  transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                  className="w-full"
+                >
+                  {resultsTab === 'latest' && (
+                    <div className="space-y-2">
+                      <div className="bg-white rounded-[2rem] p-2 shadow-xl shadow-slate-200/50 border border-white relative">
+                        <div className="aspect-[3/4] rounded-[1.5rem] overflow-hidden bg-slate-100 relative group">
+                          {(isGenerating || isEditing) ? (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50/80 backdrop-blur-sm z-20">
+                              <div className="relative mb-6">
+                                <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <span className="text-[10px] font-black text-blue-600">{timer}s</span>
+                                </div>
+                              </div>
+                              <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest animate-pulse mb-1 px-4 text-center">{statusMsg}</p>
+                            </div>
+                          ) : genError ? (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-50 p-8 text-center animate-in fade-in">
+                              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center text-red-500 mb-4">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                              </div>
+                              <h3 className="text-red-700 font-bold text-[10px] uppercase tracking-widest mb-2">Notice</h3>
+                              <p className="text-[10px] text-red-600/80 leading-relaxed mb-6">{genError}</p>
+                              <button onClick={() => setGenError(null)} className="px-5 py-2 bg-red-500 text-white rounded-full font-bold text-[10px] shadow-lg shadow-red-200 active:scale-95 transition-transform">Dismiss</button>
+                            </div>
+                          ) : latestImage ? (
+                            <>
+                              <img src={latestImage.url} className="w-full h-full object-cover" alt="Result" />
+                              <div className="absolute top-3 right-3">
+                                <button onClick={() => deleteFromVault(latestImage.id)} className="w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-transform">
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                                </button>
+                              </div>
+                              <div className="absolute bottom-3 right-3 flex gap-2">
+                                <button onClick={() => handleShare(latestImage.url)} className="w-10 h-10 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-lg text-blue-600 active:scale-90 transition-transform"><Icons.Share /></button>
+                                <button onClick={() => handleDownload(latestImage.url)} className="w-10 h-10 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-lg text-blue-600 active:scale-90 transition-transform"><Icons.Download /></button>
+                              </div>
+                            </>
+                          ) : (
+                            <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 p-8 text-center">
+                              <Icons.Magic />
+                              <p className="mt-2 text-[10px] font-medium">Ready to replicate styles. Upload an inspiration to begin.</p>
+                            </div>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 mt-2">
+                          <button 
+                            onClick={() => setEditingIndex(0)} 
+                            disabled={!latestImage || isGenerating || isEditing} 
+                            className="flex items-center justify-center gap-2 py-3 px-4 bg-[#11141D] text-white rounded-xl font-bold text-[11px] active:scale-95 transition-all disabled:opacity-20"
+                          >
+                            <Icons.Magic className="w-4 h-4" />
+                            <span>AI Re-touch</span>
+                          </button>
+                          <button 
+                            onClick={handleGenerate} 
+                            disabled={isGenerating || isEditing || !isReadyToSync} 
+                            className="flex items-center justify-center gap-2 py-3 px-4 bg-[#2D66F6] text-white rounded-xl font-bold text-[11px] active:scale-95 transition-all shadow-lg shadow-blue-200/50 disabled:opacity-50"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+                            <span>Regenerate</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
-                    <p className="text-xs font-black text-blue-600 uppercase tracking-widest animate-pulse mb-1 px-4 text-center">{statusMsg}</p>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Est. total: ~20s</p>
-                  </div>
-                ) : genError ? (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-50 p-8 text-center animate-in fade-in">
-                    <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center text-red-500 mb-4">
-                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                    </div>
-                    <h3 className="text-red-700 font-bold text-sm uppercase tracking-widest mb-2">Notice</h3>
-                    <p className="text-xs text-red-600/80 leading-relaxed mb-6">{genError}</p>
-                    <button onClick={() => setGenError(null)} className="px-6 py-3 bg-red-500 text-white rounded-full font-bold text-xs shadow-lg shadow-red-200 active:scale-95 transition-transform">Dismiss</button>
-                  </div>
-                ) : latestImage ? (
-                  <>
-                    <img src={latestImage.url} className="w-full h-full object-cover" alt="Result" />
-                    <div className="absolute top-4 right-4">
-                      <button onClick={() => deleteFromVault(latestImage.id)} className="w-10 h-10 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-transform">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M18 6L6 18M6 6l12 12"/></svg>
-                      </button>
-                    </div>
-                    <div className="absolute bottom-4 right-4 flex gap-2">
-                      <button onClick={() => handleShare(latestImage.url)} className="w-12 h-12 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-lg text-blue-600 active:scale-90 transition-transform"><Icons.Share /></button>
-                      <button onClick={() => handleDownload(latestImage.url)} className="w-12 h-12 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-lg text-blue-600 active:scale-90 transition-transform"><Icons.Download /></button>
-                    </div>
-                  </>
-                ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 p-8 text-center">
-                    <Icons.Magic />
-                    <p className="mt-2 text-xs font-medium">Ready to replicate styles. Upload an inspiration to begin.</p>
-                  </div>
-                )}
-              </div>
-              <div className="grid grid-cols-2 gap-3 mt-6">
-                <button onClick={() => setEditingIndex(0)} disabled={!latestImage || isGenerating || isEditing} className="flex items-center justify-center gap-3 py-6 px-4 bg-[#11141D] text-white rounded-[1.5rem] font-bold text-sm active:scale-95 transition-all disabled:opacity-20"><Icons.Magic /><span>AI Re-touch</span></button>
-                <button onClick={handleGenerate} disabled={isGenerating || isEditing || !isReadyToSync} className="flex items-center justify-center gap-3 py-6 px-4 bg-[#2D66F6] text-white rounded-[1.5rem] font-bold text-sm active:scale-95 transition-all shadow-lg shadow-blue-200 disabled:opacity-50"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg><span>Regenerate</span></button>
-              </div>
-            </div>
+                  )}
 
-            <div className="space-y-4">
-              <div className="flex items-center justify-between px-1">
-                <div className="flex items-center gap-2">
-                  <h3 className="text-xl font-black text-slate-800 tracking-tight">VAULT</h3>
-                  <span className="bg-slate-200 px-2 py-0.5 rounded-md text-[10px] font-bold text-slate-600">{history.length}/{MAX_HISTORY}</span>
-                </div>
-                {history.length > 0 && <button onClick={clearAllVault} className="text-xs font-bold text-red-500 active:opacity-50">Clear All</button>}
-              </div>
-              {history.length > 0 ? (
-                <div className="grid grid-cols-3 gap-3">
-                  {history.map((item) => (
-                    <div key={item.id} className="aspect-square rounded-2xl overflow-hidden bg-white shadow-sm border-2 border-white relative group">
-                      <img src={item.url} className="w-full h-full object-cover" />
-                      <button onClick={(e) => { e.stopPropagation(); deleteFromVault(item.id); }} className="absolute top-1 right-1 bg-red-500/90 text-white p-1.5 rounded-full shadow-lg active:scale-90 z-10"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+                  {resultsTab === 'history' && (
+                    <div className="space-y-4 animate-in fade-in duration-300">
+                      <div className="flex items-center justify-between px-1">
+                        <div className="flex items-center gap-2">
+                          <span className="bg-slate-200 px-2 py-0.5 rounded-md text-[10px] font-bold text-slate-600">{history.length}/{MAX_HISTORY}</span>
+                        </div>
+                        {history.length > 0 && <button onClick={clearAllVault} className="text-[10px] font-bold text-red-500 active:opacity-50 uppercase tracking-tighter">Clear All</button>}
+                      </div>
+                      {history.length > 0 ? (
+                        <div className="grid grid-cols-3 gap-3">
+                          {history.map((item) => (
+                            <div key={item.id} className="aspect-square rounded-2xl overflow-hidden bg-white shadow-sm border-2 border-white relative group">
+                              <img src={item.url} className="w-full h-full object-cover" />
+                              <button onClick={(e) => { e.stopPropagation(); deleteFromVault(item.id); }} className="absolute top-1 right-1 bg-red-500/90 text-white p-1.5 rounded-full shadow-lg active:scale-90 z-10"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="py-20 flex flex-col items-center justify-center text-slate-300">
+                          <Icons.History className="w-12 h-12 opacity-20 mb-4" />
+                          <p className="text-[10px] font-bold uppercase tracking-widest">Vault is empty</p>
+                        </div>
+                      )}
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="py-12 flex flex-col items-center justify-center text-slate-300"><p className="text-xs font-bold uppercase tracking-widest">Vault is empty</p></div>
-              )}
+                  )}
+                </motion.div>
+              </AnimatePresence>
             </div>
           </div>
         )}
 
         {view === 'home' && (
-          <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
-            {currentStep === 1 && (
-              <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-white animate-in fade-in slide-in-from-left-4">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">1. Your References ({myReferences.length}/5)</p>
-                    {myReferences.length > 0 && !isSavingRefs && !isProcessingRefs && (
-                      <span className="bg-emerald-100 text-emerald-600 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-widest flex items-center gap-1 animate-in zoom-in-50">
-                        <Icons.Check /> {myReferences.length} Ready
-                      </span>
-                    )}
-                  </div>
-                  {myReferences.length > 0 && <button onClick={() => setMyReferences([])} className="text-red-400 font-bold text-[10px] uppercase">Remove All</button>}
-                </div>
-                <div className="flex gap-3 overflow-x-auto pb-4 custom-scrollbar">
-                  {myReferences.map((r, i) => (
-                    <div key={i} className="w-24 h-24 shrink-0 rounded-2xl overflow-hidden bg-slate-100 relative border border-slate-200">
-                      <img src={r} className="w-full h-full object-cover" />
-                      <button onClick={() => setMyReferences(prev => prev.filter((_, idx) => idx !== i))} className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full shadow-lg active:scale-90 transition-transform"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
-                    </div>
-                  ))}
-                  <div className="flex gap-2">
-                    <label className="w-24 h-24 shrink-0 rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-300 cursor-pointer hover:bg-slate-50 transition-colors">
-                      <Icons.Upload /><span className="text-[10px] font-bold mt-1">Gallery</span>
-                      <input key={myReferences.length} type="file" hidden multiple onChange={handleReferenceUpload} />
-                    </label>
-                    <button onClick={() => setShowCamera(true)} className="w-24 h-24 shrink-0 rounded-2xl border-2 border-dashed border-blue-200 flex flex-col items-center justify-center text-blue-400 bg-blue-50/30 hover:bg-blue-50 transition-colors">
-                      <Icons.Camera /><span className="text-[10px] font-bold mt-1">Camera</span>
-                    </button>
-                  </div>
-                </div>
-                <div className="mt-6">
+          <div className="space-y-2">
+            {(currentStep === 1 || currentStep === 2) && (
+              <>
+                <div className="flex bg-slate-100 p-1 rounded-2xl mb-0">
                   <button 
-                    disabled={myReferences.length === 0 || isProcessingRefs}
-                    onClick={() => setCurrentStep(2)}
-                    className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-lg shadow-blue-200 active:scale-95 transition-all disabled:opacity-20"
+                    onClick={() => goToStep(1)}
+                    className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${currentStep === 1 ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}`}
                   >
-                    Next: Choose Inspiration
+                    1. References
+                  </button>
+                  <button 
+                    onClick={() => goToStep(2)}
+                    className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${currentStep === 2 ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}`}
+                  >
+                    2. Inspiration
                   </button>
                 </div>
-              </div>
-            )}
 
-            {currentStep === 2 && (
-              <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-white animate-in fade-in slide-in-from-right-4">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">2. Goal Inspiration</p>
-                    {extractedJson && !isExtracting && !isProcessingInspiration && (
-                      <span className="bg-emerald-100 text-emerald-600 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-widest flex items-center gap-1 animate-in zoom-in-50">
-                        <Icons.Check /> Ready
-                      </span>
-                    )}
-                    {(isExtracting || isProcessingInspiration) && (
-                      <span className="bg-blue-100 text-blue-600 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-widest flex items-center gap-1 animate-pulse">
-                        <div className="w-2 h-2 border border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                        {isProcessingInspiration ? 'Processing...' : 'Analyzing...'}
-                      </span>
-                    )}
-                  </div>
-                  <button onClick={() => setCurrentStep(1)} className="text-slate-400 font-bold text-[10px] uppercase">Back</button>
-                </div>
-                <label className={`block w-full min-h-[200px] rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 relative overflow-hidden group cursor-pointer transition-all ${inspiration ? 'border-solid border-blue-100' : 'hover:border-blue-400'}`}>
-                  {inspiration ? <img src={inspiration} className="w-full max-h-[400px] object-contain mx-auto" /> : (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400">
-                      <Icons.Upload /><span className="text-xs mt-2 font-bold uppercase tracking-tighter">Upload Pinterest/IG Style</span>
-                    </div>
-                  )}
-                  <input key={inspiration ? 'active' : 'empty'} type="file" hidden onChange={handleInspirationUpload} accept="image/*" />
-                </label>
-                
-                {genError && (
-                  <div className="mt-4 p-4 bg-red-50 rounded-2xl border border-red-100 animate-in fade-in">
-                    <p className="text-[11px] text-red-600 font-bold mb-2">{genError}</p>
-                    <button 
-                      onClick={() => inspiration && runStyleAnalysis(inspiration)}
-                      className="text-[10px] font-black uppercase tracking-widest text-white bg-red-500 px-4 py-2 rounded-lg"
+                <div className="relative overflow-hidden min-h-[320px]">
+                  <AnimatePresence initial={false} custom={direction} mode="wait">
+                    <motion.div
+                      key={currentStep}
+                      custom={direction}
+                      initial={{ x: direction > 0 ? 50 : -50, opacity: 0 }}
+                      animate={{ x: 0, opacity: 1 }}
+                      exit={{ x: direction > 0 ? -50 : 50, opacity: 0 }}
+                      transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                      className="w-full"
                     >
-                      Retry Analysis
-                    </button>
-                  </div>
-                )}
-
-                <div className="mt-6">
-                  <button 
-                    disabled={!extractedJson || isExtracting || isProcessingInspiration}
-                    onClick={() => {
-                      handleGenerate();
-                      setCurrentStep(3);
-                    }}
-                    className="w-full py-4 bg-[#2D66F6] text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-lg shadow-blue-200 active:scale-95 transition-all disabled:opacity-20"
-                  >
-                    {isGenerating ? 'Syncing Style...' : 'Sync Style & Generate'}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {currentStep === 3 && (
-              <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
-                <div className="flex items-center justify-between mb-4 px-2">
-                  <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest">3. Final Result</h2>
-                  <button onClick={() => setCurrentStep(2)} className="text-slate-400 font-bold text-[10px] uppercase">Back to Inspiration</button>
-                </div>
-
-                <div className="bg-white rounded-[2.5rem] p-4 shadow-xl shadow-slate-200/50 border border-white relative">
-                  <div className="aspect-[3/4] rounded-[2rem] overflow-hidden bg-slate-100 relative group">
-                    {(isGenerating || isEditing) ? (
-                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50/80 backdrop-blur-sm z-20">
-                        <div className="relative mb-6">
-                          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <span className="text-[10px] font-black text-blue-600">{timer}s</span>
+                      {currentStep === 1 && (
+                        <div className="bg-white p-4 rounded-[2rem] shadow-sm border border-white">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <span className="bg-slate-100 text-slate-500 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest">
+                                {myReferences.length}/5
+                              </span>
+                              {myReferences.length > 0 && !isSavingRefs && !isProcessingRefs && (
+                                <span className="bg-emerald-100 text-emerald-600 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-widest flex items-center gap-1">
+                                  <Icons.Check /> Ready
+                                </span>
+                              )}
+                            </div>
+                            {myReferences.length > 0 && <button onClick={() => setMyReferences([])} className="text-red-400 font-bold text-[10px] uppercase tracking-tighter">Remove All</button>}
+                          </div>
+                          <div className="grid grid-cols-3 gap-3 pb-4">
+                            <label className="aspect-square rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-300 cursor-pointer hover:bg-slate-50 transition-colors">
+                              <Icons.Upload /><span className="text-[10px] font-bold mt-1">Gallery</span>
+                              <input key={myReferences.length} type="file" hidden multiple onChange={handleReferenceUpload} />
+                            </label>
+                            <button onClick={() => setShowCamera(true)} className="aspect-square rounded-2xl border-2 border-dashed border-blue-200 flex flex-col items-center justify-center text-blue-400 bg-blue-50/30 hover:bg-blue-50 transition-colors">
+                              <Icons.Camera /><span className="text-[10px] font-bold mt-1">Camera</span>
+                            </button>
+                            {myReferences.map((r, i) => (
+                              <div key={i} className="aspect-square rounded-2xl overflow-hidden bg-slate-100 relative border border-slate-200">
+                                <img src={r} className="w-full h-full object-cover" />
+                                <button onClick={() => setMyReferences(prev => prev.filter((_, idx) => idx !== i))} className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full shadow-lg active:scale-90 transition-transform"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+                              </div>
+                            ))}
                           </div>
                         </div>
-                        <p className="text-xs font-black text-blue-600 uppercase tracking-widest animate-pulse mb-1 px-4 text-center">{statusMsg}</p>
-                      </div>
-                    ) : genError ? (
-                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-50 p-8 text-center animate-in fade-in">
-                        <Icons.Trash className="text-red-300 mb-4 w-12 h-12" />
-                        <h3 className="text-red-700 font-bold text-sm uppercase tracking-widest mb-2">Error</h3>
-                        <p className="text-xs text-red-600/80 leading-relaxed mb-6">{genError}</p>
-                        <button onClick={() => setGenError(null)} className="px-6 py-3 bg-red-500 text-white rounded-full font-bold text-xs shadow-lg shadow-red-200 active:scale-95 transition-transform">Dismiss</button>
-                      </div>
-                    ) : latestImage ? (
-                      <>
-                        <img src={latestImage.url} className="w-full h-full object-cover" alt="Result" />
-                        <div className="absolute top-4 right-4">
-                          <button onClick={() => deleteFromVault(latestImage.id)} className="w-10 h-10 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-transform">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M18 6L6 18M6 6l12 12"/></svg>
-                          </button>
-                        </div>
-                        <div className="absolute bottom-4 right-4 flex gap-2">
-                          <button onClick={() => handleShare(latestImage.url)} className="w-12 h-12 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-lg text-blue-600 active:scale-90 transition-transform"><Icons.Share /></button>
-                          <button onClick={() => handleDownload(latestImage.url)} className="w-12 h-12 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-lg text-blue-600 active:scale-90 transition-transform"><Icons.Download /></button>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 p-8 text-center">
-                        <Icons.Magic />
-                        <p className="mt-2 text-xs font-medium italic">Ready to generate...</p>
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-3 mt-6">
-                    <button 
-                      onClick={() => setEditingIndex(0)} 
-                      disabled={!latestImage || isGenerating || isEditing} 
-                      className="flex items-center justify-center gap-3 py-6 px-4 bg-[#11141D] text-white rounded-[1.5rem] font-bold text-sm active:scale-95 transition-all disabled:opacity-20"
-                    >
-                      <Icons.Magic /><span>AI Re-touch</span>
-                    </button>
-                    <button 
-                      onClick={handleGenerate} 
-                      disabled={isGenerating || isEditing || !isReadyToSync} 
-                      className="flex items-center justify-center gap-3 py-6 px-4 bg-[#2D66F6] text-white rounded-[1.5rem] font-bold text-sm active:scale-95 transition-all shadow-lg shadow-blue-200 disabled:opacity-50"
-                    >
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
-                      <span>Regenerate</span>
-                    </button>
-                  </div>
-                </div>
+                      )}
 
-                <div className="bg-blue-50 p-6 rounded-[2rem] border border-blue-100">
-                  <h3 className="text-xs font-black text-blue-600 uppercase tracking-widest mb-4">Quick Actions</h3>
-                  <div className="grid grid-cols-2 gap-3">
-                    <button onClick={() => setView('profile')} className="p-4 bg-white rounded-2xl border border-blue-100 flex flex-col items-center gap-2 active:scale-95 transition-all">
-                      <Icons.History className="text-blue-500" />
-                      <span className="text-[10px] font-bold uppercase text-slate-500">View Vault</span>
-                    </button>
-                    <button onClick={() => setCurrentStep(1)} className="p-4 bg-white rounded-2xl border border-blue-100 flex flex-col items-center gap-2 active:scale-95 transition-all">
-                      <Icons.Switch className="text-blue-500" />
-                      <span className="text-[10px] font-bold uppercase text-slate-500">New Subject</span>
-                    </button>
-                  </div>
+                      {currentStep === 2 && (
+                        <div className="bg-white p-4 rounded-[2rem] shadow-sm border border-white">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              {extractedJson && !isExtracting && !isProcessingInspiration && (
+                                <span className="bg-emerald-100 text-emerald-600 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-widest flex items-center gap-1">
+                                  <Icons.Check /> Ready
+                                </span>
+                              )}
+                              {(isExtracting || isProcessingInspiration) && (
+                                <span className="bg-blue-100 text-blue-600 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-widest flex items-center gap-1 animate-pulse">
+                                  <div className="w-2 h-2 border border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                                  {isProcessingInspiration ? 'Processing...' : 'Analyzing...'}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-4">
+                              {inspiration && <button onClick={() => { setInspiration(null); setExtractedJson(''); setGenError(null); }} className="text-red-400 font-bold text-[10px] uppercase tracking-tighter">Clear</button>}
+                            </div>
+                          </div>
+                          <label className={`block w-full min-h-[200px] rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 relative overflow-hidden group cursor-pointer transition-all ${inspiration ? 'border-solid border-blue-100' : 'hover:border-blue-400'}`}>
+                            {inspiration ? <img src={inspiration} className="w-full max-h-[400px] object-contain mx-auto" /> : (
+                              <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400">
+                                <Icons.Upload /><span className="text-xs mt-2 font-bold uppercase tracking-tighter">Upload Pinterest/IG Style</span>
+                              </div>
+                            )}
+                            <input key={inspiration ? 'active' : 'empty'} type="file" hidden onChange={handleInspirationUpload} accept="image/*" />
+                          </label>
+                          
+                          {genError && (
+                            <div className="mt-4 p-4 bg-red-50 rounded-2xl border border-red-100">
+                              <p className="text-[11px] text-red-600 font-bold mb-2">{genError}</p>
+                              <button 
+                                onClick={() => inspiration && runStyleAnalysis(inspiration)}
+                                className="text-[10px] font-black uppercase tracking-widest text-white bg-red-500 px-4 py-2 rounded-lg"
+                              >
+                                Retry Analysis
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </motion.div>
+                  </AnimatePresence>
                 </div>
-              </div>
+              </>
             )}
           </div>
         )}
 
         {view === 'styles' && (
-          <div className="space-y-6 animate-in slide-in-from-right-4 duration-500">
-            <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400">Saved Inspiration ({stylesLibrary.length}/{MAX_LIBRARY})</h2>
+          <div className="space-y-4 animate-in slide-in-from-right-4 duration-500">
+            <div className="flex items-center gap-2">
+              <span className="bg-white text-blue-600 shadow-sm px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest">
+                Saved Inspiration
+              </span>
+              <span className="bg-slate-200 text-slate-600 px-2 py-0.5 rounded-md text-[10px] font-bold">
+                {stylesLibrary.length}/{MAX_LIBRARY}
+              </span>
+            </div>
             {stylesLibrary.length > 0 ? (
               <div className="grid grid-cols-3 gap-3">
                 {stylesLibrary.map((style, i) => (
@@ -831,8 +881,12 @@ const App: React.FC = () => {
         )}
 
         {view === 'profile' && (
-          <div className="space-y-6 animate-in slide-in-from-left-4 duration-500">
-            <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400">User Preferences</h2>
+          <div className="space-y-4 animate-in slide-in-from-left-4 duration-500">
+            <div className="flex items-center gap-2">
+              <span className="bg-white text-blue-600 shadow-sm px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest">
+                User Preferences
+              </span>
+            </div>
             <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-white flex items-center gap-4">
               <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-slate-400"><Icons.User /></div>
               <div><p className="font-bold">Creative User</p><p className="text-xs text-slate-400">Free Tier Plan</p></div>
