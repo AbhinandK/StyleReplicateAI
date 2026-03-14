@@ -1,0 +1,7 @@
+{
+  "name": "StyleReplicate AI",
+  "description": "Professional photo style replication using Gemini Nano Banana. Upload an inspiration photo to extract style and pose, then apply it to your own face and body using reference photos.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
